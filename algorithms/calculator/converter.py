@@ -3,7 +3,8 @@ Programming for linguists
 
 Implementation of the Reverse Polish Notation Converter
 """
-from algorithms.calculator.reverse_polish_notation import (Digit, Op, ReversePolishNotation)
+from algorithms.calculator.reverse_polish_notation import (Digit, Op, ReversePolishNotation, BinaryOp,
+                                                           OpFactory, OpenBracket, CloseBracket)
 from data_structures.queue_ import Queue_
 from data_structures.stack import Stack
 
@@ -25,6 +26,12 @@ class ReversePolishNotationConverterState:
         Help function
         :return:
         """
+        el = self.stack.top()
+        while not isinstance(el, OpenBracket):
+            self.expression_in_postfix_notation.put(el)
+            self.stack.pop()
+            el = self.stack.top()
+        self.stack.pop()
 
 
 class ReversePolishNotationConverter:
@@ -42,6 +49,35 @@ class ReversePolishNotationConverter:
         :return: ReversePolishNotation object
         """
 
+        state = ReversePolishNotationConverterState(expression_in_infix_notation)
+        while not state.expression_in_infix_notation.empty():
+
+            symbol = state.expression_in_infix_notation.top()
+
+            if ReversePolishNotationConverter.is_part_of_digit(symbol):
+                digit: Digit = ReversePolishNotationConverter.read_digit(state)
+                state.expression_in_postfix_notation.put(digit)
+                continue
+
+            operator = OpFactory.get_op_by_symbol(symbol)
+
+            if ReversePolishNotationConverter.is_open_bracket(operator):
+                state.stack.push(operator)
+                continue
+
+            if ReversePolishNotationConverter.is_close_bracket(operator):
+                state.pop_from_stack_until_opening_bracket()
+
+            if ReversePolishNotationConverter.is_binary_operation(operator):
+                ReversePolishNotationConverter.pop_from_stack_until_prioritizing(operator, state)
+            else:
+                raise Exception(symbol)
+            ReversePolishNotationConverter.pop_from_stack_until_prioritizing(operator, state)
+        while not state.stack.empty():
+            state.expression_in_postfix_notation.put(state.stack.top())
+            state.stack.pop()
+        return state.expression_in_postfix_notation
+
     @staticmethod
     def pop_from_stack_until_prioritizing(operator: Op, state: ReversePolishNotationConverterState):
         """
@@ -50,15 +86,28 @@ class ReversePolishNotationConverter:
         :param operator: Instance of Op class - current operator
         :param state: State of the RPN convert process
         """
+        stack = state.stack
+        while (not stack.empty() and
+               ReversePolishNotationConverter.is_binary_operation(stack.top()) and
+               stack.top() > operator):
+            state.expression_in_postfix_notation.put(stack.top())
+            stack.pop()
+        stack.push(operator)
 
     @staticmethod
-    def read_digit(state) -> Digit:
+    def read_digit(state: ReversePolishNotationConverterState) -> Digit:
         """
         Method to read a digit from self._infix_notation
 
         :param state: expression in Reverse Polish Notation Format
         :return: Instance of Digit class
         """
+        digit = ''
+        while (not state.expression_in_infix_notation.empty() and
+               ReversePolishNotationConverter.is_part_of_digit(state.expression_in_infix_notation.top())):
+            digit += state.expression_in_infix_notation.get()
+        return Digit(digit)
+
 
     @staticmethod
     def is_part_of_digit(character: str) -> bool:
@@ -67,6 +116,7 @@ class ReversePolishNotationConverter:
         :param character: current symbol
         :return: True if character can be part of a digit, else False
         """
+        return character.isdigit() or character == ReversePolishNotationConverter.point
 
     @staticmethod
     def is_open_bracket(operator: Op) -> bool:
@@ -76,6 +126,7 @@ class ReversePolishNotationConverter:
         :param operator: Operator redden from the infix expression
         :return: True id this operator is the open bracket operator else False
         """
+        return isinstance(operator, OpenBracket)
 
     @staticmethod
     def is_close_bracket(operator: Op) -> bool:
@@ -85,6 +136,7 @@ class ReversePolishNotationConverter:
         :param operator: Operator redden from the infix expression
         :return: True id this operator is the close bracket operator else False
         """
+        return isinstance(operator, CloseBracket)
 
     @staticmethod
     def is_binary_operation(operator: Op) -> bool:
@@ -94,3 +146,4 @@ class ReversePolishNotationConverter:
         :param operator: Operator redden from the infix expression
         :return: True id this operator is the binary operator else False
         """
+        return isinstance(operator, BinaryOp)

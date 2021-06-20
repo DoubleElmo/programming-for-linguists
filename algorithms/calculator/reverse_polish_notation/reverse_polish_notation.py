@@ -5,6 +5,7 @@ Class for Reverse Polish Notation
 """
 
 from algorithms.calculator.reverse_polish_notation.element import Element
+from data_structures.queue_.queue_ import Queue_
 
 
 class ReversePolishNotation:
@@ -16,13 +17,14 @@ class ReversePolishNotation:
     """
 
     def __init__(self):
-        self._expression_queue = None
+        self._expression_queue = Queue_()
 
     def put(self, element: Element):
         """
         Put the element to the RPN
         :param element: element to put
         """
+        self._expression_queue.put(element)
 
     def __iter__(self):
         return self
